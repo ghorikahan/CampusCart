@@ -1,9 +1,11 @@
-import { ShoppingBag, ArrowRight, ShieldCheck, RefreshCw, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { ShoppingBag, ArrowRight, ShieldCheck, RefreshCw, Sparkles, BookOpen } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4 text-foreground">
-      <main className="flex max-w-2xl flex-col items-center text-center">
+    <div className="flex flex-1 flex-col items-center justify-center bg-background px-4 py-16 text-foreground">
+      <main className="flex max-w-3xl flex-col items-center text-center">
         <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
           <ShoppingBag className="h-8 w-8" />
         </div>
@@ -17,35 +19,45 @@ export default function Home() {
           Welcome to <span className="text-primary">CampusCart</span>
         </h1>
 
-        <p className="mt-4 text-lg text-muted-foreground">
+        <p className="mt-4 max-w-xl text-lg text-muted-foreground">
           Buy, sell, exchange, and donate campus essentials with trusted fellow students. Clean, fast, and secure.
         </p>
 
         <div className="mt-8 flex flex-wrap justify-center gap-4">
-          <div className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow transition hover:opacity-95">
-            Explore Listings
-            <ArrowRight className="h-4 w-4" />
-          </div>
-          <div className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-5 py-2.5 text-sm font-medium text-card-foreground shadow-sm hover:bg-accent">
-            Sell an Item
-          </div>
+          <Link href="/listings">
+            <Button size="lg" className="gap-2">
+              Explore Listings
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </Link>
+          <Link href="/listings/new">
+            <Button variant="outline" size="lg">
+              Sell an Item
+            </Button>
+          </Link>
         </div>
 
-        <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-3 text-left w-full">
-          <div className="rounded-xl border border-border bg-card p-4">
-            <ShieldCheck className="h-5 w-5 text-primary mb-2" />
-            <h3 className="font-semibold text-sm">Verified Campus Members</h3>
-            <p className="text-xs text-muted-foreground mt-1">Direct peer interactions within your student community.</p>
+        <div className="mt-16 grid grid-cols-1 gap-6 sm:grid-cols-3 text-left w-full">
+          <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+            <ShieldCheck className="h-6 w-6 text-primary mb-3" />
+            <h3 className="font-semibold text-base">Verified Campus Members</h3>
+            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+              Trade safely within your student community. Meet up at student centers, dorms, or libraries.
+            </p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-4">
-            <RefreshCw className="h-5 w-5 text-primary mb-2" />
-            <h3 className="font-semibold text-sm">Sale & Exchange</h3>
-            <p className="text-xs text-muted-foreground mt-1">Flexible listing types: buy, trade, or give away items for free.</p>
+          <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+            <RefreshCw className="h-6 w-6 text-primary mb-3" />
+            <h3 className="font-semibold text-base">Sale, Free & Exchange</h3>
+            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+              Flexible deals: sell for cash, swap study materials, or give away items before moving out.
+            </p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-4">
-            <ShoppingBag className="h-5 w-5 text-primary mb-2" />
-            <h3 className="font-semibold text-sm">Zero Platform Fees</h3>
-            <p className="text-xs text-muted-foreground mt-1">Direct student-to-student enquiries with no hidden cuts.</p>
+          <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+            <BookOpen className="h-6 w-6 text-primary mb-3" />
+            <h3 className="font-semibold text-base">Structured Enquiries</h3>
+            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+              Negotiate price offers with formal accept/reject tracking and zero commission fees.
+            </p>
           </div>
         </div>
       </main>
