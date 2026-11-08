@@ -84,10 +84,11 @@ async function testAuth() {
     if (!authorized) throw new Error("authorized callback missing in authConfig");
 
     // Case A: Unauthenticated user accessing /dashboard
+    type AuthParam = Parameters<NonNullable<typeof authConfig.callbacks>["authorized"]>[0];
     const mockUnauthDashboard = {
       auth: null,
       request: { nextUrl: new URL("http://localhost:3000/dashboard") },
-    } as any;
+    } as unknown as AuthParam;
     const resA = authorized(mockUnauthDashboard);
     if (!(resA instanceof Response) || resA.status !== 307 && resA.status !== 302 && !resA.headers.get("location")?.includes("/login")) {
       throw new Error("Unauthenticated request to /dashboard should redirect to /login");
@@ -98,7 +99,7 @@ async function testAuth() {
     const mockUnauthNew = {
       auth: null,
       request: { nextUrl: new URL("http://localhost:3000/listings/new") },
-    } as any;
+    } as unknown as AuthParam;
     const resB = authorized(mockUnauthNew);
     if (!(resB instanceof Response) || !resB.headers.get("location")?.includes("/login?callbackUrl=")) {
       throw new Error("Unauthenticated request to /listings/new should redirect with callbackUrl");
@@ -109,7 +110,7 @@ async function testAuth() {
     const mockAuthDashboard = {
       auth: { user: { id: "123", email: "alex@campus.edu" } },
       request: { nextUrl: new URL("http://localhost:3000/dashboard") },
-    } as any;
+    } as unknown as AuthParam;
     const resC = authorized(mockAuthDashboard);
     if (resC !== true) {
       throw new Error("Authenticated request to /dashboard should be allowed (return true)");
@@ -120,7 +121,7 @@ async function testAuth() {
     const mockPublicHome = {
       auth: null,
       request: { nextUrl: new URL("http://localhost:3000/") },
-    } as any;
+    } as unknown as AuthParam;
     const resD = authorized(mockPublicHome);
     if (resD !== true) {
       throw new Error("Public route / should be allowed");
