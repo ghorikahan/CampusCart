@@ -88,3 +88,20 @@ In `Enquiry`, both `buyer` and `seller` are stored as references:
 ```
 - Enables student proximity queries (e.g., finding books or furniture within 2 km of campus).
 
+---
+
+## 5. Cascading Deletion & Enquiry Lifecycle on Listing Removal
+
+When a seller deletes a listing via `deleteListing(id)`:
+
+1. **Cloudinary Asset Purge**:
+   - All embedded image `publicId`s belonging to the listing are unlinked and destroyed from Cloudinary (`cloudinary.uploader.destroy`).
+2. **Favorites Purge**:
+   - Related bookmarks in the `favorites` collection are permanently hard-deleted (`Favorite.deleteMany({ listing: id })`).
+3. **Enquiries (Soft Expiration)**:
+   - Enquiries are **not** hard-deleted from the database.
+   - Any active `PENDING` enquiries on the listing are transitioned to status `EXPIRED`, and an entry is appended to `statusHistory`:
+     `{ status: "EXPIRED", at: new Date(), note: "Listing was deleted by the seller." }`.
+   - **Architecture Rationale**: Hard-deleting enquiries would erase negotiation and communication history for prospective buyers. Preserving expired records with an explanatory audit trail gives buyers transparency in their "My Enquiries" dashboard without keeping active pending locks on deleted inventory.
+
+
