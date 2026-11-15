@@ -123,3 +123,4 @@ export default async function SellerProfilePage({ params }: SellerProfilePagePro
     </div>
   );
 }
+

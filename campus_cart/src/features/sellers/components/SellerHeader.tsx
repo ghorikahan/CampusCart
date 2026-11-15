@@ -270,3 +270,4 @@ export function SellerHeader({ seller, isOwner, className }: SellerHeaderProps) 
     </div>
   );
 }
+
