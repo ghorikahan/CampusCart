@@ -136,8 +136,8 @@ export function SellerCard({ seller, className }: SellerCardProps) {
             asChild
             className="h-7 text-xs font-medium text-primary hover:text-primary hover:bg-primary/5 px-2 rounded-lg"
           >
-            <Link href={`/browse?seller=${sellerId}`}>
-              <span>View all listings</span>
+            <Link href={`/sellers/${sellerId}`}>
+              <span>View seller profile</span>
               <ExternalLink className="h-3 w-3 ml-1" />
             </Link>
           </Button>
