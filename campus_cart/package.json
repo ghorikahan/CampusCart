@@ -11,6 +11,7 @@
     "test:listings": "tsx scripts/test-listings.ts",
     "test:detail": "tsx scripts/test-listing-detail.ts",
     "test:sellers": "tsx scripts/test-seller-profile.ts",
+    "test:enquiries": "tsx scripts/test-enquiries.ts",
     "verify:indexes": "tsx scripts/verify-search-indexes.ts",
     "db:seed": "tsx src/server/seed.ts",
     "format": "prettier --write ."

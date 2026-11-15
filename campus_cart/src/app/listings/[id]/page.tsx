@@ -25,12 +25,16 @@ import {
   incrementViewCount,
 } from "@/server/listings/queries";
 import { isListingFavorited } from "@/server/favorites/actions";
+import { getMyEnquiryForListing } from "@/server/enquiries/queries";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ImageGallery } from "@/components/shared/ImageGallery";
 import { ListingCard } from "@/components/shared/ListingCard";
-import { ListingActionArea } from "@/features/listings/components/ListingActionArea";
+import {
+  ListingActionArea,
+  type ExistingEnquiryData,
+} from "@/features/listings/components/ListingActionArea";
 import { SellerCard } from "@/features/listings/components/SellerCard";
 
 import {
@@ -182,10 +186,13 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
     notFound();
   }
 
-  // 6. Check Favorite Status & Similar Listings in parallel
-  const [isFavorite, similarListings] = await Promise.all([
+  // 6. Check Favorite Status, Similar Listings & Existing Enquiry in parallel
+  const [isFavorite, similarListings, existingEnquiry] = await Promise.all([
     currentUser?.id ? isListingFavorited(id) : Promise.resolve(false),
     getSimilarListings(listing, 4),
+    currentUser?.id && !isOwner
+      ? getMyEnquiryForListing(id)
+      : Promise.resolve(null),
   ]);
 
   const categoryInfo = CATEGORY_MAP[listing.category] || {
@@ -477,10 +484,14 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
                     seller: {
                       id: sellerId,
                       name: listing.seller.name,
+                      phone: listing.seller.phone,
+                      showPhone: listing.seller.showPhone,
+                      contactPreference: listing.seller.contactPreference,
                     },
                   }}
                   isOwner={isOwner}
                   initialIsFavorite={isFavorite}
+                  existingEnquiry={existingEnquiry as unknown as ExistingEnquiryData | null}
                 />
               </div>
 

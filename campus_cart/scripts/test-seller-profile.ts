@@ -1,6 +1,5 @@
 import { connectDB } from "../src/lib/db";
 import { User } from "../src/models/User";
-import { Listing } from "../src/models/Listing";
 import { isValidObjectId } from "../src/lib/serialize";
 import {
   getSellerProfile,

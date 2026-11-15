@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import {
   Heart,
@@ -19,7 +20,12 @@ import {
   AlertTriangle,
   Send,
   Trash2,
+  Phone,
+  ExternalLink,
+  ArrowLeftCircle,
+  Inbox,
 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -41,8 +47,27 @@ import {
   toggleListingActive,
   deleteListing,
 } from "@/features/listings/actions";
+import { createEnquiry, withdrawEnquiry } from "@/server/enquiries/actions";
+import { EnquiryStatusBadge } from "@/features/enquiries/components/EnquiryStatusBadge";
 import { type ListingStatus, type ListingType } from "@/models/Listing";
+import { type EnquiryStatus } from "@/models/Enquiry";
 import { cn } from "@/lib/utils";
+
+export interface ExistingEnquiryData {
+  id: string;
+  _id?: string;
+  message: string;
+  offerPrice?: number | null;
+  status: EnquiryStatus;
+  responseMessage?: string;
+  createdAt: string | Date;
+  seller?: {
+    name?: string;
+    phone?: string | null;
+    showPhone?: boolean;
+    contactPreference?: "IN_APP" | "EMAIL" | "PHONE" | "WHATSAPP";
+  };
+}
 
 interface ListingActionAreaProps {
   listing: {
@@ -56,17 +81,28 @@ interface ListingActionAreaProps {
       id?: string;
       _id?: string;
       name: string;
+      phone?: string | null;
+      showPhone?: boolean;
+      contactPreference?: "IN_APP" | "EMAIL" | "PHONE" | "WHATSAPP";
     };
   };
   isOwner: boolean;
   initialIsFavorite?: boolean;
+  existingEnquiry?: ExistingEnquiryData | null;
   className?: string;
 }
+
+const QUICK_MESSAGE_TEMPLATES = [
+  "👋 Hi! Is this still available for campus pickup?",
+  "📍 Can we meet today near the campus library or canteen?",
+  "🎓 I'm interested in buying this! Would you consider a slight student discount?",
+];
 
 export function ListingActionArea({
   listing,
   isOwner,
   initialIsFavorite = false,
+  existingEnquiry: initialEnquiry = null,
   className,
 }: ListingActionAreaProps) {
   const router = useRouter();
@@ -74,6 +110,11 @@ export function ListingActionArea({
   // Favorite State
   const [isFavorite, setIsFavorite] = useState(initialIsFavorite);
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+
+  // Existing Enquiry state (can be updated locally after submission or withdrawal)
+  const [currentEnquiry, setCurrentEnquiry] = useState<ExistingEnquiryData | null>(
+    initialEnquiry
+  );
 
   // Owner Action States
   const [currentStatus, setCurrentStatus] = useState<ListingStatus>(listing.status);
@@ -89,9 +130,13 @@ export function ListingActionArea({
     listing.price ? String(listing.price) : ""
   );
   const [enquiryMessage, setEnquiryMessage] = useState(
-    `Hi ${listing.seller.name}, I'm interested in "${listing.title}". Is it still available for campus pickup?`
+    QUICK_MESSAGE_TEMPLATES[0]
   );
   const [isSubmittingEnquiry, setIsSubmittingEnquiry] = useState(false);
+
+  // Buyer Withdraw State
+  const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
 
   // Report Modal State
   const [reportOpen, setReportOpen] = useState(false);
@@ -156,16 +201,61 @@ export function ListingActionArea({
     e.preventDefault();
     setIsSubmittingEnquiry(true);
 
-    // Simulate enquiry submission (to be fully integrated with in-app chat in Task 9)
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setIsSubmittingEnquiry(false);
-    setEnquiryOpen(false);
-    toast.success(
-      `Enquiry sent to ${listing.seller.name}! You will receive notifications when they reply.`
-    );
+    try {
+      const parsedOffer =
+        offerPrice && !isNaN(Number(offerPrice)) ? Number(offerPrice) : null;
+
+      const res = await createEnquiry({
+        listingId: listing.id,
+        message: enquiryMessage,
+        offerPrice: parsedOffer,
+      });
+
+      if (res.success) {
+        toast.success(
+          `Offer submitted! ${listing.seller.name} has been notified.`
+        );
+        setEnquiryOpen(false);
+
+        // Update local state to show enquiry status immediately
+        const created = res.data as ExistingEnquiryData;
+        setCurrentEnquiry(created);
+        router.refresh();
+      } else {
+        toast.error(res.error || "Failed to submit enquiry.");
+      }
+    } catch {
+      toast.error("An error occurred while submitting your offer.");
+    } finally {
+      setIsSubmittingEnquiry(false);
+    }
   };
 
-  // 4. Report Submit (Stores nothing yet, as specified)
+  // 4. Buyer Withdraw Enquiry
+  const handleWithdrawEnquiry = async () => {
+    if (!currentEnquiry?.id) return;
+    setIsWithdrawing(true);
+
+    try {
+      const res = await withdrawEnquiry({ enquiryId: currentEnquiry.id });
+      if (res.success) {
+        toast.success("Enquiry withdrawn successfully.");
+        setCurrentEnquiry((prev) =>
+          prev ? { ...prev, status: "WITHDRAWN" as EnquiryStatus } : null
+        );
+        setWithdrawDialogOpen(false);
+        router.refresh();
+      } else {
+        toast.error(res.error || "Failed to withdraw enquiry.");
+      }
+    } catch {
+      toast.error("Failed to withdraw enquiry.");
+    } finally {
+      setIsWithdrawing(false);
+    }
+  };
+
+  // 5. Report Submit
   const handleSendReport = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmittingReport(true);
@@ -175,7 +265,7 @@ export function ListingActionArea({
     toast.success("Report submitted. Our campus moderation team has been notified.");
   };
 
-  // 5. Owner Status Switch
+  // 6. Owner Status Switch
   const handleOwnerStatusChange = async (newStatus: ListingStatus) => {
     if (newStatus === currentStatus || isUpdatingStatus) return;
     setIsUpdatingStatus(true);
@@ -195,7 +285,7 @@ export function ListingActionArea({
     }
   };
 
-  // 6. Owner Toggle Active
+  // 7. Owner Toggle Active
   const handleOwnerToggleActive = async () => {
     if (isTogglingActive) return;
     setIsTogglingActive(true);
@@ -220,7 +310,7 @@ export function ListingActionArea({
     }
   };
 
-  // 7. Owner Delete Listing
+  // 8. Owner Delete Listing
   const handleOwnerDelete = async () => {
     setIsDeleting(true);
     try {
@@ -241,9 +331,17 @@ export function ListingActionArea({
 
   const isSold = currentStatus === "SOLD";
 
+  // Check if buyer has an active pending or accepted enquiry
+  const hasExistingEnquiry = Boolean(currentEnquiry);
+  const isEnquiryPending = currentEnquiry?.status === "PENDING";
+  const isEnquiryAccepted = currentEnquiry?.status === "ACCEPTED";
+  const isEnquiryRejected = currentEnquiry?.status === "REJECTED";
+  const isEnquiryWithdrawn = currentEnquiry?.status === "WITHDRAWN";
+  const isEnquiryExpired = currentEnquiry?.status === "EXPIRED";
+
   return (
     <div className={cn("flex flex-col gap-4", className)}>
-      {/* Primary Action Button (or Owner Controls) */}
+      {/* Primary Action Button (or Owner Controls or Existing Enquiry Card) */}
       {isOwner ? (
         <div className="flex flex-col gap-3 p-4 rounded-2xl border-2 border-primary/20 bg-primary/5">
           <div className="flex items-center justify-between">
@@ -337,7 +435,115 @@ export function ListingActionArea({
             Delete this listing permanently
           </Button>
         </div>
+      ) : hasExistingEnquiry && currentEnquiry ? (
+        /* If buyer already has an enquiry on this listing, display its status card */
+        <div className="flex flex-col gap-3 p-4 rounded-2xl border-2 border-primary/20 bg-muted/30">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Inbox className="h-4 w-4 text-primary" /> Your Offer Status
+            </span>
+            <EnquiryStatusBadge status={currentEnquiry.status} />
+          </div>
+
+          {/* Status Specific Message & Details */}
+          {isEnquiryAccepted ? (
+            <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 space-y-2">
+              <p className="text-xs font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                <span>Offer Accepted! Coordinate Campus Handover</span>
+              </p>
+              <p className="text-xs text-foreground/80">
+                The seller accepted your offer {currentEnquiry.offerPrice ? `of ₹${currentEnquiry.offerPrice.toLocaleString("en-IN")}` : ""}.
+              </p>
+
+              {/* Reveal Contact Details */}
+              <div className="pt-2 border-t border-emerald-200 dark:border-emerald-800/60 flex flex-wrap gap-2">
+                {listing.seller.phone && (
+                  <a
+                    href={`tel:${listing.seller.phone}`}
+                    className="inline-flex items-center gap-1 text-xs font-semibold py-1 px-2.5 rounded-lg bg-background border border-emerald-300 text-foreground hover:bg-muted"
+                  >
+                    <Phone className="h-3 w-3 text-emerald-600" />
+                    <span>Call {listing.seller.phone}</span>
+                  </a>
+                )}
+                {listing.seller.contactPreference === "WHATSAPP" && listing.seller.phone && (
+                  <a
+                    href={`https://wa.me/${listing.seller.phone.replace(/[^0-9]/g, "")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs font-semibold py-1 px-2.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700"
+                  >
+                    <span>WhatsApp</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
+              </div>
+            </div>
+          ) : isEnquiryPending ? (
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-900 dark:text-amber-200 space-y-1">
+              <p className="font-semibold flex items-center gap-1.5">
+                <Clock className="h-3.5 w-3.5 text-amber-600" /> Waiting for {listing.seller.name}&apos;s reply
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                Submitted {formatDistanceToNow(new Date(currentEnquiry.createdAt), { addSuffix: true })}.
+                {currentEnquiry.offerPrice ? ` Offer: ₹${currentEnquiry.offerPrice.toLocaleString("en-IN")}` : ""}
+              </p>
+            </div>
+          ) : isEnquiryRejected ? (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-900 dark:text-rose-200 space-y-1">
+              <p className="font-semibold">Offer Declined</p>
+              <p className="text-[11px] text-muted-foreground">
+                The seller did not accept this offer.
+                {currentEnquiry.responseMessage ? ` "${currentEnquiry.responseMessage}"` : ""}
+              </p>
+            </div>
+          ) : (
+            <div className="p-3 rounded-xl bg-muted/60 text-xs text-muted-foreground">
+              Enquiry was {currentEnquiry.status.toLowerCase()}.
+            </div>
+          )}
+
+          {/* Quick Actions for Existing Enquiry */}
+          <div className="flex items-center gap-2 pt-1">
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              className="flex-1 text-xs font-medium rounded-xl border-border/80"
+            >
+              <Link href="/enquiries?tab=sent">
+                <span>View in Enquiries</span>
+                <ExternalLink className="h-3 w-3 ml-1" />
+              </Link>
+            </Button>
+
+            {isEnquiryPending && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setWithdrawDialogOpen(true)}
+                className="text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl"
+              >
+                <ArrowLeftCircle className="h-3.5 w-3.5 mr-1" />
+                Withdraw
+              </Button>
+            )}
+
+            {(isEnquiryWithdrawn || isEnquiryExpired || isEnquiryRejected) && !isSold && (
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => setEnquiryOpen(true)}
+                className="text-xs rounded-xl"
+              >
+                Make New Offer
+              </Button>
+            )}
+          </div>
+        </div>
       ) : (
+        /* Standard Send Enquiry Button for Visitors without an existing enquiry */
         <div className="flex flex-col gap-2.5">
           <Button
             size="lg"
@@ -362,7 +568,7 @@ export function ListingActionArea({
         </div>
       )}
 
-      {/* Secondary Quick Action Row: Favorite, Share, Report */}
+      {/* Secondary Action Row: Favorite, Share, Report */}
       <div className="flex items-center gap-2">
         <Button
           variant="outline"
@@ -408,7 +614,7 @@ export function ListingActionArea({
         )}
       </div>
 
-      {/* 1. Enquiry & Offer Dialog */}
+      {/* 1. Send Enquiry & Offer Dialog */}
       <Dialog open={enquiryOpen} onOpenChange={setEnquiryOpen}>
         <DialogContent className="sm:max-w-md rounded-2xl">
           <DialogHeader>
@@ -429,10 +635,10 @@ export function ListingActionArea({
             {listing.listingType === "FOR_SALE" && listing.price && (
               <div className="flex flex-col gap-2">
                 <Label htmlFor="offerPrice" className="text-xs font-semibold">
-                  Your Offer (₹)
+                  Your Offer Amount (₹)
                 </Label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-semibold">
                     ₹
                   </span>
                   <Input
@@ -440,16 +646,17 @@ export function ListingActionArea({
                     type="number"
                     value={offerPrice}
                     onChange={(e) => setOfferPrice(e.target.value)}
-                    className="pl-7 rounded-xl"
+                    className="pl-7 rounded-xl font-medium"
                     placeholder="Enter amount"
                     min="1"
                   />
                 </div>
-                <div className="flex gap-2">
+                {/* Price quick helper chips */}
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
                   <button
                     type="button"
                     onClick={() => setOfferPrice(String(listing.price))}
-                    className="text-[11px] font-medium px-2 py-1 rounded-md bg-muted hover:bg-muted/80 text-muted-foreground transition"
+                    className="text-[11px] font-medium px-2 py-1 rounded-lg bg-muted hover:bg-muted/80 text-foreground transition"
                   >
                     Asking: ₹{listing.price}
                   </button>
@@ -458,15 +665,43 @@ export function ListingActionArea({
                     onClick={() =>
                       setOfferPrice(String(Math.round((listing.price ?? 0) * 0.9)))
                     }
-                    className="text-[11px] font-medium px-2 py-1 rounded-md bg-muted hover:bg-muted/80 text-muted-foreground transition"
+                    className="text-[11px] font-medium px-2 py-1 rounded-lg bg-muted hover:bg-muted/80 text-foreground transition"
                   >
                     10% Off: ₹{Math.round((listing.price ?? 0) * 0.9)}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOfferPrice(String(Math.round((listing.price ?? 0) * 0.8)))
+                    }
+                    className="text-[11px] font-medium px-2 py-1 rounded-lg bg-muted hover:bg-muted/80 text-foreground transition"
+                  >
+                    20% Off: ₹{Math.round((listing.price ?? 0) * 0.8)}
                   </button>
                 </div>
               </div>
             )}
 
-            <div className="flex flex-col gap-2">
+            {/* Quick Templates */}
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Quick Message Templates:
+              </span>
+              <div className="flex flex-col gap-1">
+                {QUICK_MESSAGE_TEMPLATES.map((tmpl, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setEnquiryMessage(tmpl)}
+                    className="text-left text-xs p-2 rounded-xl border border-border/50 hover:bg-muted/50 text-muted-foreground hover:text-foreground transition line-clamp-1"
+                  >
+                    {tmpl}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="enquiryMessage" className="text-xs font-semibold">
                 Message to Seller
               </Label>
@@ -474,14 +709,14 @@ export function ListingActionArea({
                 id="enquiryMessage"
                 value={enquiryMessage}
                 onChange={(e) => setEnquiryMessage(e.target.value)}
-                rows={4}
-                className="rounded-xl resize-none text-sm"
+                rows={3}
+                className="rounded-xl resize-none text-xs"
                 placeholder="Ask about condition, campus pickup location, or negotiation..."
                 required
               />
             </div>
 
-            <div className="p-3 rounded-xl bg-muted/50 border border-border/50 text-[11px] text-muted-foreground">
+            <div className="p-3 rounded-xl bg-muted/40 border border-border/50 text-[11px] text-muted-foreground">
               💡 <span className="font-medium text-foreground">Safe Campus Trading:</span> We recommend
               meeting in well-lit public campus spots like the student library, canteen, or campus gates.
             </div>
@@ -498,21 +733,33 @@ export function ListingActionArea({
               <Button
                 type="submit"
                 disabled={isSubmittingEnquiry}
-                className="rounded-xl"
+                className="rounded-xl font-semibold"
               >
                 {isSubmittingEnquiry ? (
                   <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
                 ) : (
                   <Send className="h-4 w-4 mr-1.5" />
                 )}
-                Send Message
+                Submit Offer
               </Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* 2. Report Dialog */}
+      {/* 2. Buyer Withdraw Confirmation Dialog */}
+      <ConfirmDialog
+        open={withdrawDialogOpen}
+        onOpenChange={setWithdrawDialogOpen}
+        title="Withdraw this enquiry?"
+        description="Are you sure you want to withdraw your enquiry? The seller will be notified that you are no longer interested."
+        confirmLabel="Withdraw Offer"
+        confirmVariant="destructive"
+        isLoading={isWithdrawing}
+        onConfirm={handleWithdrawEnquiry}
+      />
+
+      {/* 3. Report Dialog */}
       <Dialog open={reportOpen} onOpenChange={setReportOpen}>
         <DialogContent className="sm:max-w-md rounded-2xl">
           <DialogHeader>
@@ -589,7 +836,7 @@ export function ListingActionArea({
         </DialogContent>
       </Dialog>
 
-      {/* 3. Owner Delete Confirmation Dialog */}
+      {/* 4. Owner Delete Confirmation Dialog */}
       <ConfirmDialog
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
