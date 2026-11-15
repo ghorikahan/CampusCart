@@ -12,6 +12,7 @@
     "test:detail": "tsx scripts/test-listing-detail.ts",
     "test:sellers": "tsx scripts/test-seller-profile.ts",
     "test:enquiries": "tsx scripts/test-enquiries.ts",
+    "test:notifications": "tsx scripts/test-notifications.ts",
     "verify:indexes": "tsx scripts/verify-search-indexes.ts",
     "db:seed": "tsx src/server/seed.ts",
     "format": "prettier --write ."
@@ -46,6 +47,7 @@
     "react-hook-form": "^7.91.0",
     "sharp": "^0.35.5",
     "sonner": "^2.0.8",
+    "swr": "^2.5.1",
     "tailwind-merge": "^3.7.0",
     "zod": "^4.6.7"
   },

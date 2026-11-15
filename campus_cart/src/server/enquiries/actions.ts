@@ -6,7 +6,7 @@ import { connectDB } from "@/lib/db";
 import { getCurrentUser } from "@/server/auth";
 import { Listing } from "@/models/Listing";
 import { Enquiry } from "@/models/Enquiry";
-import { Notification } from "@/models/Notification";
+import { createNotification, createManyNotifications } from "@/server/notifications";
 import { serializeDocument } from "@/lib/serialize";
 import {
   createEnquirySchema,
@@ -96,20 +96,16 @@ export async function createEnquiry(
 
     await enquiry.save();
 
-    // Create notification for seller
-    try {
-      await Notification.create({
-        user: listing.seller,
-        type: "ENQUIRY_RECEIVED",
-        title: "New Enquiry Received",
-        body: `${user.name || "A student"} inquired about "${listing.title}"${
-          normalizedOfferPrice ? ` with an offer of ₹${normalizedOfferPrice.toLocaleString("en-IN")}` : ""
-        }.`,
-        link: "/enquiries",
-      });
-    } catch (notifErr) {
-      console.warn("Could not dispatch ENQUIRY_RECEIVED notification:", notifErr);
-    }
+    // Create notification for seller using central helper
+    await createNotification({
+      user: listing.seller,
+      type: "ENQUIRY_RECEIVED",
+      title: "New Enquiry Received",
+      body: `${user.name || "A student"} inquired about "${listing.title}"${
+        normalizedOfferPrice ? ` with an offer of ₹${normalizedOfferPrice.toLocaleString("en-IN")}` : ""
+      }.`,
+      link: "/enquiries",
+    });
 
     revalidatePath(`/listings/${listingId}`);
     revalidatePath("/enquiries");
@@ -269,10 +265,7 @@ export async function respondToEnquiry(
               link: "/enquiries",
             }));
 
-            await Notification.insertMany(otherBuyerNotifications, {
-              ordered: false,
-              session: session || undefined,
-            });
+            await createManyNotifications(otherBuyerNotifications);
           }
         }
       }
@@ -286,18 +279,13 @@ export async function respondToEnquiry(
           ? `The seller accepted your offer for "${listingTitle}". Click to view pickup details.`
           : `The seller declined your enquiry for "${listingTitle}".`;
 
-      await Notification.create(
-        [
-          {
-            user: enquiry.buyer,
-            type: notifType,
-            title: notifTitle,
-            body: notifBody,
-            link: "/enquiries",
-          },
-        ],
-        { session: session || undefined }
-      );
+      await createNotification({
+        user: enquiry.buyer,
+        type: notifType,
+        title: notifTitle,
+        body: notifBody,
+        link: "/enquiries",
+      });
 
       // Commit transaction if session is active
       if (session) {

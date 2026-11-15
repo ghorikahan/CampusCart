@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { ShoppingBag, PlusCircle, Heart, Bell } from "lucide-react";
+import { ShoppingBag, PlusCircle, Heart } from "lucide-react";
 import { auth } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { UserNav } from "./UserNav";
 import { SearchBar } from "./SearchBar";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { MobileMenu } from "./MobileMenu";
+import { NavbarNotifications } from "./NavbarNotifications";
 
 export async function Navbar() {
   const session = await auth();
@@ -42,13 +43,7 @@ export async function Navbar() {
               </Link>
 
               {/* Notifications */}
-              <Link href="/notifications" aria-label="Notifications">
-                <Button variant="ghost" size="icon" className="relative rounded-xl">
-                  <Bell className="h-5 w-5" />
-                  {/* Unread badge — placeholder */}
-                  <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive" />
-                </Button>
-              </Link>
+              <NavbarNotifications />
 
               {/* Sell CTA */}
               <Link href="/listings/new" className="hidden sm:block">

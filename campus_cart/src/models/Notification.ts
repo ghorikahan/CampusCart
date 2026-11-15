@@ -76,6 +76,16 @@ NotificationSchema.index(
   { name: "user_readAt_created" }
 );
 
+// TTL index: auto-delete read notifications after 90 days (only applies when readAt is a Date)
+NotificationSchema.index(
+  { readAt: 1 },
+  {
+    name: "readAt_ttl_90d",
+    expireAfterSeconds: 90 * 24 * 60 * 60, // 90 days
+    partialFilterExpression: { readAt: { $type: "date" } },
+  }
+);
+
 export const Notification: Model<INotification> =
   mongoose.models.Notification ||
   mongoose.model<INotification>("Notification", NotificationSchema);

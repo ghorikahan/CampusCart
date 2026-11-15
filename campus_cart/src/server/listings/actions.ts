@@ -6,7 +6,7 @@ import { getCurrentUser } from "@/server/auth";
 import { Listing } from "@/models/Listing";
 import { Favorite } from "@/models/Favorite";
 import { Enquiry } from "@/models/Enquiry";
-import { Notification } from "@/models/Notification";
+import { createManyNotifications } from "@/server/notifications";
 import { deleteFromCloudinary } from "@/lib/cloudinary";
 import { isValidObjectId, serializeDocument } from "@/lib/serialize";
 import {
@@ -131,13 +131,13 @@ export async function updateListing(
 
         if (favorites.length > 0) {
           const notifications = favorites.map((fav) => ({
-            user: fav.user,
+            user: fav.user.toString(),
             type: "FAVORITE_PRICE_DROP" as const,
             title: "Price Drop Alert!",
             body: `The price for "${listing.title}" dropped from ₹${oldPrice.toLocaleString("en-IN")} to ₹${newPrice.toLocaleString("en-IN")}.`,
             link: `/listings/${id}`,
           }));
-          await Notification.insertMany(notifications, { ordered: false });
+          await createManyNotifications(notifications);
         }
       } catch (notifyErr) {
         console.error("Failed to send price drop notifications:", notifyErr);
@@ -360,13 +360,13 @@ export async function updateListingStatus(
 
           if (favorites.length > 0) {
             const notifications = favorites.map((fav) => ({
-              user: fav.user,
+              user: fav.user.toString(),
               type: "FAVORITE_SOLD" as const,
               title: "An item you saved has been sold",
               body: `"${listing.title}" was marked as sold by the seller.`,
               link: `/listings/${id}`,
             }));
-            await Notification.insertMany(notifications, { ordered: false });
+            await createManyNotifications(notifications);
           }
         } catch (notifyErr) {
           console.error("Failed to send favorite sold notifications:", notifyErr);
