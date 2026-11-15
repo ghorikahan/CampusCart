@@ -123,8 +123,8 @@ export function ListingEditActions({
               status === "AVAILABLE"
                 ? "success"
                 : status === "RESERVED"
-                ? "warning"
-                : "secondary"
+                  ? "warning"
+                  : "secondary"
             }
             className="text-xs"
           >
