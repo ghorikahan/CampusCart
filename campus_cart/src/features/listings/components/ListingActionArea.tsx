@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import {
-  Heart,
   Share2,
   Flag,
   MessageSquare,
@@ -41,7 +40,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { toggleFavorite } from "@/server/favorites/actions";
+import { FavoriteButton } from "@/components/shared/FavoriteButton";
 import {
   updateListingStatus,
   toggleListingActive,
@@ -59,7 +58,7 @@ export interface ExistingEnquiryData {
   message: string;
   offerPrice?: number | null;
   status: EnquiryStatus;
-  responseMessage?: string;
+  responseMessage?: string | null;
   createdAt: string | Date;
   seller?: {
     name?: string;
@@ -107,10 +106,6 @@ export function ListingActionArea({
 }: ListingActionAreaProps) {
   const router = useRouter();
 
-  // Favorite State
-  const [isFavorite, setIsFavorite] = useState(initialIsFavorite);
-  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
-
   // Existing Enquiry state (can be updated locally after submission or withdrawal)
   const [currentEnquiry, setCurrentEnquiry] = useState<ExistingEnquiryData | null>(
     initialEnquiry
@@ -144,27 +139,7 @@ export function ListingActionArea({
   const [reportDetails, setReportDetails] = useState("");
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
-  // 1. Toggle Favorite
-  const handleToggleFavorite = async () => {
-    if (isTogglingFavorite) return;
-    setIsTogglingFavorite(true);
 
-    try {
-      const res = await toggleFavorite(listing.id);
-      if (res.success) {
-        setIsFavorite(res.isFavorited);
-        toast.success(
-          res.isFavorited ? "Saved to your favorites!" : "Removed from favorites."
-        );
-      } else {
-        toast.error(res.error || "Failed to update favorites.");
-      }
-    } catch {
-      toast.error("Failed to update favorites.");
-    } finally {
-      setIsTogglingFavorite(false);
-    }
-  };
 
   // 2. Share
   const handleShare = async () => {
@@ -560,36 +535,22 @@ export function ListingActionArea({
             {isSold
               ? "Item has been sold"
               : listing.listingType === "FREE"
-              ? "Request Free Item"
-              : listing.listingType === "EXCHANGE"
-              ? "Propose Exchange"
-              : "Send Enquiry / Make Offer"}
+                ? "Request Free Item"
+                : listing.listingType === "EXCHANGE"
+                  ? "Propose Exchange"
+                  : "Send Enquiry / Make Offer"}
           </Button>
         </div>
       )}
 
       {/* Secondary Action Row: Favorite, Share, Report */}
       <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="default"
-          onClick={handleToggleFavorite}
-          disabled={isTogglingFavorite}
-          className={cn(
-            "flex-1 rounded-xl border-border/70 font-medium transition-all",
-            isFavorite
-              ? "bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/30 dark:border-rose-900"
-              : "hover:bg-muted"
-          )}
-        >
-          <Heart
-            className={cn(
-              "h-4 w-4 mr-2 transition-transform",
-              isFavorite ? "fill-rose-500 text-rose-500 scale-110" : "text-muted-foreground"
-            )}
-          />
-          {isFavorite ? "Saved" : "Save Item"}
-        </Button>
+        <FavoriteButton
+          variant="button"
+          listingId={listing.id}
+          initialIsFavorite={initialIsFavorite}
+          className="flex-1"
+        />
 
         <Button
           variant="outline"
@@ -622,8 +583,8 @@ export function ListingActionArea({
               {listing.listingType === "FREE"
                 ? "Request This Free Item"
                 : listing.listingType === "EXCHANGE"
-                ? "Propose An Exchange"
-                : "Send Enquiry / Make an Offer"}
+                  ? "Propose An Exchange"
+                  : "Send Enquiry / Make an Offer"}
             </DialogTitle>
             <DialogDescription className="text-xs">
               Direct message to <span className="font-medium text-foreground">{listing.seller.name}</span>{" "}

@@ -13,6 +13,7 @@
     "test:sellers": "tsx scripts/test-seller-profile.ts",
     "test:enquiries": "tsx scripts/test-enquiries.ts",
     "test:notifications": "tsx scripts/test-notifications.ts",
+    "test:favorites": "tsx scripts/test-favorites.ts",
     "verify:indexes": "tsx scripts/verify-search-indexes.ts",
     "db:seed": "tsx src/server/seed.ts",
     "format": "prettier --write ."

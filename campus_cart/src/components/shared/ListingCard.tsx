@@ -3,11 +3,12 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
-import { Heart, MapPin, Clock } from "lucide-react";
+import { MapPin, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { PriceTag } from "@/components/shared/PriceTag";
 import { SellerChip } from "@/components/shared/SellerChip";
+import { FavoriteButton } from "@/components/shared/FavoriteButton";
 import { cn } from "@/lib/utils";
 
 export type ListingCardData = {
@@ -54,7 +55,6 @@ export function ListingCard({
   onFavoriteToggle,
   className,
 }: ListingCardProps) {
-  const [favorite, setFavorite] = useState(initialFavorite);
   const [imageError, setImageError] = useState(false);
 
   const primaryImage = listing.images?.[0]?.url;
@@ -68,14 +68,7 @@ export function ListingCard({
     addSuffix: true,
   });
 
-  const handleFavoriteClick = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setFavorite((prev) => !prev);
-    if (onFavoriteToggle) {
-      await onFavoriteToggle(listing.id);
-    }
-  };
+
 
   return (
     <div
@@ -118,22 +111,11 @@ export function ListingCard({
           )}
 
           {/* Favorite Heart Button */}
-          <button
-            type="button"
-            onClick={handleFavoriteClick}
-            aria-label={favorite ? "Remove from favorites" : "Save to favorites"}
-            className={cn(
-              "absolute top-3 right-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-background/80 backdrop-blur-sm text-muted-foreground shadow-sm transition hover:scale-110 hover:bg-background",
-              favorite && "text-rose-500 hover:text-rose-600 fill-rose-500"
-            )}
-          >
-            <Heart
-              className={cn(
-                "h-4 w-4 transition-transform active:scale-125",
-                favorite && "fill-rose-500 stroke-rose-500"
-              )}
-            />
-          </button>
+          <FavoriteButton
+            listingId={listing.id}
+            initialIsFavorite={initialFavorite}
+            onToggle={onFavoriteToggle ? () => onFavoriteToggle(listing.id) : undefined}
+          />
 
           {/* Category & Condition Badges overlay bottom */}
           <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1.5">

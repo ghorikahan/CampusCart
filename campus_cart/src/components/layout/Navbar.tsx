@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ShoppingBag, PlusCircle, Heart } from "lucide-react";
+import { ShoppingBag, PlusCircle } from "lucide-react";
 import { auth } from "@/auth";
 import { Button } from "@/components/ui/button";
 import { UserNav } from "./UserNav";
@@ -7,9 +7,12 @@ import { SearchBar } from "./SearchBar";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { MobileMenu } from "./MobileMenu";
 import { NavbarNotifications } from "./NavbarNotifications";
+import { NavbarFavorites } from "./NavbarFavorites";
+import { getFavoriteCount } from "@/server/favorites/queries";
 
 export async function Navbar() {
   const session = await auth();
+  const initialFavoritesCount = session?.user?.id ? await getFavoriteCount() : 0;
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -36,11 +39,7 @@ export async function Navbar() {
           {session?.user ? (
             <>
               {/* Favorites */}
-              <Link href="/favorites" aria-label="Favorites">
-                <Button variant="ghost" size="icon" className="relative rounded-xl">
-                  <Heart className="h-5 w-5" />
-                </Button>
-              </Link>
+              <NavbarFavorites initialCount={initialFavoritesCount} />
 
               {/* Notifications */}
               <NavbarNotifications />

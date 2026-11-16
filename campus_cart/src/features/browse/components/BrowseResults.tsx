@@ -1,4 +1,5 @@
 import { searchListings, type SearchListingsParams } from "@/server/listings/search";
+import { getUserFavoriteListingIds } from "@/server/favorites/queries";
 import { ListingCard } from "@/components/shared/ListingCard";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ActiveFilterChips } from "./ActiveFilterChips";
@@ -13,6 +14,9 @@ interface BrowseResultsProps {
 export async function BrowseResults({ searchParams }: BrowseResultsProps) {
   const result = await searchListings(searchParams);
   const { listings, total, page, totalPages } = result;
+
+  const favoriteIds = await getUserFavoriteListingIds(listings.map((l) => l.id));
+  const favoriteSet = new Set(favoriteIds);
 
   const hasSearch = Boolean(searchParams.q?.trim());
 
@@ -45,7 +49,11 @@ export async function BrowseResults({ searchParams }: BrowseResultsProps) {
         <div className="space-y-8">
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {listings.map((item) => (
-              <ListingCard key={item.id} listing={item} />
+              <ListingCard
+                key={item.id}
+                listing={item}
+                isFavorite={favoriteSet.has(item.id)}
+              />
             ))}
           </div>
 

@@ -20,6 +20,7 @@ import { SearchBar } from "@/components/layout/SearchBar";
 import { ListingCard } from "@/components/shared/ListingCard";
 import { ListingCardSkeleton } from "@/components/shared/ListingCardSkeleton";
 import { searchListings } from "@/server/listings/search";
+import { getUserFavoriteListingIds } from "@/server/favorites/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -79,6 +80,9 @@ async function FreshListingsSection() {
 
   if (result.listings.length === 0) return null;
 
+  const favoriteIds = await getUserFavoriteListingIds(result.listings.map((l) => l.id));
+  const favoriteSet = new Set(favoriteIds);
+
   return (
     <section className="space-y-6">
       <div className="flex items-center justify-between">
@@ -100,7 +104,11 @@ async function FreshListingsSection() {
 
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
         {result.listings.map((item) => (
-          <ListingCard key={item.id} listing={item} />
+          <ListingCard
+            key={item.id}
+            listing={item}
+            isFavorite={favoriteSet.has(item.id)}
+          />
         ))}
       </div>
     </section>
@@ -115,6 +123,9 @@ async function FreeStuffSection() {
   });
 
   if (result.listings.length === 0) return null;
+
+  const favoriteIds = await getUserFavoriteListingIds(result.listings.map((l) => l.id));
+  const favoriteSet = new Set(favoriteIds);
 
   return (
     <section className="rounded-3xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 via-teal-500/5 to-transparent p-6 sm:p-8 space-y-6">
@@ -147,7 +158,11 @@ async function FreeStuffSection() {
 
       <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
         {result.listings.map((item) => (
-          <ListingCard key={item.id} listing={item} />
+          <ListingCard
+            key={item.id}
+            listing={item}
+            isFavorite={favoriteSet.has(item.id)}
+          />
         ))}
       </div>
     </section>

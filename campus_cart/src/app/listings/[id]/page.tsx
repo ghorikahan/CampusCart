@@ -24,7 +24,7 @@ import {
   getSimilarListings,
   incrementViewCount,
 } from "@/server/listings/queries";
-import { isListingFavorited } from "@/server/favorites/actions";
+import { isListingFavorited, getUserFavoriteListingIds } from "@/server/favorites";
 import { getMyEnquiryForListing } from "@/server/enquiries/queries";
 
 import { Badge } from "@/components/ui/badge";
@@ -194,6 +194,12 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
       ? getMyEnquiryForListing(id)
       : Promise.resolve(null),
   ]);
+
+  const similarFavoriteIds =
+    currentUser?.id && similarListings.length > 0
+      ? await getUserFavoriteListingIds(similarListings.map((l) => l.id))
+      : [];
+  const similarFavSet = new Set(similarFavoriteIds);
 
   const categoryInfo = CATEGORY_MAP[listing.category] || {
     label: listing.category,
@@ -524,7 +530,11 @@ export default async function ListingDetailPage({ params }: ListingDetailPagePro
           {similarListings.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
               {similarListings.map((simListing) => (
-                <ListingCard key={simListing.id} listing={simListing} />
+                <ListingCard
+                  key={simListing.id}
+                  listing={simListing}
+                  isFavorite={similarFavSet.has(simListing.id)}
+                />
               ))}
             </div>
           ) : (
