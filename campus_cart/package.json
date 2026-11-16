@@ -14,6 +14,7 @@
     "test:enquiries": "tsx scripts/test-enquiries.ts",
     "test:notifications": "tsx scripts/test-notifications.ts",
     "test:favorites": "tsx scripts/test-favorites.ts",
+    "test:dashboard": "tsx scripts/test-dashboard.ts",
     "verify:indexes": "tsx scripts/verify-search-indexes.ts",
     "db:seed": "tsx src/server/seed.ts",
     "format": "prettier --write ."
@@ -46,6 +47,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-hook-form": "^7.91.0",
+    "recharts": "^3.10.1",
     "sharp": "^0.35.5",
     "sonner": "^2.0.8",
     "swr": "^2.5.1",
