@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, Maximize2, X } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { DEFAULT_BLUR_DATA_URL } from "@/lib/images";
 import { cn } from "@/lib/utils";
 
 interface ImageGalleryProps {
@@ -76,8 +77,10 @@ export function ImageGallery({ images, title, className }: ImageGalleryProps) {
           src={currentImage.url}
           alt={`${title} - view ${selectedIndex + 1}`}
           fill
-          priority
-          sizes="(max-width: 768px) 100vw, 60vw"
+          priority={selectedIndex === 0}
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 60vw, 800px"
+          placeholder="blur"
+          blurDataURL={DEFAULT_BLUR_DATA_URL}
           className="object-cover transition duration-300 group-hover:scale-[1.02]"
         />
 
@@ -139,6 +142,8 @@ export function ImageGallery({ images, title, className }: ImageGalleryProps) {
                 alt={`Thumbnail ${idx + 1}`}
                 fill
                 sizes="80px"
+                placeholder="blur"
+                blurDataURL={DEFAULT_BLUR_DATA_URL}
                 className="object-cover"
               />
             </button>

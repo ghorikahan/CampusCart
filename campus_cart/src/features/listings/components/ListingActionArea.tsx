@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { FavoriteButton } from "@/components/shared/FavoriteButton";
+import { ShareListingDialog } from "./ShareListingDialog";
 import {
   updateListingStatus,
   toggleListingActive,
@@ -139,36 +140,12 @@ export function ListingActionArea({
   const [reportDetails, setReportDetails] = useState("");
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
-
+  // Share Dialog State
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
 
   // 2. Share
-  const handleShare = async () => {
-    const url = typeof window !== "undefined" ? window.location.href : "";
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: listing.title,
-          text: `Check out ${listing.title} on CampusCart!`,
-          url,
-        });
-        toast.success("Shared successfully!");
-      } catch (err) {
-        if ((err as Error).name !== "AbortError") {
-          await copyToClipboard(url);
-        }
-      }
-    } else {
-      await copyToClipboard(url);
-    }
-  };
-
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast.success("Link copied to clipboard!");
-    } catch {
-      toast.error("Failed to copy link.");
-    }
+  const handleShare = () => {
+    setShareDialogOpen(true);
   };
 
   // 3. Enquiry / Offer Submit
@@ -807,6 +784,17 @@ export function ListingActionArea({
         confirmVariant="destructive"
         isLoading={isDeleting}
         onConfirm={handleOwnerDelete}
+      />
+
+      {/* 5. Share Listing Dialog with QR Code */}
+      <ShareListingDialog
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+        listing={{
+          id: listing.id,
+          title: listing.title,
+          price: listing.price,
+        }}
       />
     </div>
   );

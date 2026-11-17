@@ -170,6 +170,13 @@ export async function incrementViewCount(listingId: string): Promise<boolean> {
  * - Ranked using $text similarity on the title when possible, then recency
  * Implemented with an aggregation pipeline.
  */
+/**
+ * Retrieves similar listings based on:
+ * - Combining MongoDB $text relevance score on title keywords
+ * - Exact category match boost (40 pts)
+ * - Price proximity score (up to 30 pts inversely proportional to price difference)
+ * in a unified aggregation pipeline.
+ */
 export async function getSimilarListings(
   listing: {
     _id?: string | Types.ObjectId;
@@ -207,35 +214,8 @@ export async function getSimilarListings(
     }
 
     const targetLimit = Math.min(8, Math.max(4, limit));
-
-    // Base match filter: same category, active, not sold, excluding current listing and seller
-    const baseMatch: Record<string, unknown> = {
-      _id: { $ne: currentListingId },
-      isActive: true,
-      status: { $in: ["AVAILABLE", "RESERVED"] },
-      category: listing.category,
-    };
-
-    if (sellerObjectId) {
-      baseMatch.seller = { $ne: sellerObjectId };
-    }
-
-    // Price range match: ±40% if FOR_SALE with price > 0
-    const priceMatch: Record<string, unknown> = { ...baseMatch };
-    if (
-      listing.listingType === "FOR_SALE" &&
-      typeof listing.price === "number" &&
-      listing.price > 0
-    ) {
-      const minPrice = Math.max(0, Math.floor(listing.price * 0.6));
-      const maxPrice = Math.ceil(listing.price * 1.4);
-      priceMatch.listingType = "FOR_SALE";
-      priceMatch.price = { $gte: minPrice, $lte: maxPrice };
-    } else if (listing.listingType === "FREE") {
-      priceMatch.listingType = "FREE";
-    } else if (listing.listingType === "EXCHANGE") {
-      priceMatch.listingType = "EXCHANGE";
-    }
+    const targetPrice =
+      typeof listing.price === "number" && listing.price > 0 ? listing.price : null;
 
     // Shared aggregation lookup stage for seller public fields
     const sellerLookupStage: PipelineStage[] = [
@@ -268,98 +248,133 @@ export async function getSimilarListings(
       },
     ];
 
-    // Attempt 1: $text search ranked by relevance score + price match
-    const titleWords = listing.title
+    const titleWords = (listing.title || "")
       .replace(/[^\w\s]/gi, " ")
       .split(/\s+/)
       .filter((w) => w.length > 2)
       .slice(0, 5)
       .join(" ");
 
-    let results: Array<Record<string, unknown>> = [];
+    const baseFilter: Record<string, unknown> = {
+      _id: { $ne: currentListingId },
+      category: listing.category,
+      isActive: true,
+      status: { $in: ["AVAILABLE", "RESERVED"] },
+      ...(sellerObjectId ? { seller: { $ne: sellerObjectId } } : {}),
+    };
 
-    if (titleWords) {
-      try {
-        const textPipeline: PipelineStage[] = [
-          {
-            $match: {
-              ...priceMatch,
-              $text: { $search: titleWords },
+    const pipeline: PipelineStage[] = [
+      // Candidate collection: text search candidates unioned with category candidates
+      ...(titleWords
+        ? [
+            {
+              $match: {
+                $text: { $search: titleWords },
+                ...baseFilter,
+              },
             },
-          },
-          {
-            $addFields: {
-              score: { $meta: "textScore" },
+            {
+              $addFields: {
+                textScore: { $meta: "textScore" },
+              },
             },
-          },
-          {
-            $sort: {
-              score: { $meta: "textScore" },
-              createdAt: -1,
+            { $limit: 15 },
+            {
+              $unionWith: {
+                coll: "listings",
+                pipeline: [
+                  {
+                    $match: baseFilter,
+                  },
+                  { $limit: 15 },
+                ],
+              },
             },
-          },
-          {
-            $limit: targetLimit,
-          },
-          ...sellerLookupStage,
-        ];
+          ]
+        : [
+            {
+              $match: baseFilter,
+            },
+            { $limit: 20 },
+          ]),
 
-        results = await Listing.aggregate(textPipeline);
-      } catch (err) {
-        console.warn("Text search in similar listings failed, falling back to recency:", err);
-      }
-    }
-
-    // Attempt 2: If text search returned fewer than 4 items, supplement using priceMatch + recency
-    if (results.length < 4) {
-      const existingIds = results.map((r) => r._id);
-      const recencyPipeline: PipelineStage[] = [
-        {
-          $match: {
-            ...priceMatch,
-            _id: { $nin: [currentListingId, ...existingIds] },
-          },
+      // Deduplicate by _id
+      {
+        $group: {
+          _id: "$_id",
+          doc: { $first: "$$ROOT" },
+          maxTextScore: { $max: { $ifNull: ["$textScore", 0] } },
         },
-        {
-          $sort: {
-            createdAt: -1,
+      },
+      {
+        $replaceRoot: {
+          newRoot: {
+            $mergeObjects: ["$doc", { textScore: "$maxTextScore" }],
           },
         },
-        {
-          $limit: targetLimit - results.length,
+      },
+
+      // Calculate composite recommendation score
+      {
+        $addFields: {
+          categoryScore: {
+            $cond: [{ $eq: ["$category", listing.category] }, 40, 0],
+          },
+          scaledTextScore: {
+            $multiply: [{ $ifNull: ["$textScore", 0] }, 10],
+          },
+          priceScore:
+            targetPrice !== null
+              ? {
+                  $let: {
+                    vars: {
+                      diff: {
+                        $abs: {
+                          $subtract: [{ $ifNull: ["$price", targetPrice] }, targetPrice],
+                        },
+                      },
+                    },
+                    in: {
+                      $multiply: [
+                        30,
+                        {
+                          $divide: [
+                            1,
+                            {
+                              $add: [
+                                1,
+                                { $divide: ["$$diff", Math.max(1, targetPrice)] },
+                              ],
+                            },
+                          ],
+                        },
+                      ],
+                    },
+                  },
+                }
+              : 15,
         },
-        ...sellerLookupStage,
-      ];
-
-      const additional = await Listing.aggregate(recencyPipeline);
-      results = [...results, ...additional];
-    }
-
-    // Attempt 3: If still fewer than 4 items, relax price match to baseMatch (same category + recency)
-    if (results.length < 4) {
-      const existingIds = results.map((r) => r._id);
-      const categoryPipeline: PipelineStage[] = [
-        {
-          $match: {
-            ...baseMatch,
-            _id: { $nin: [currentListingId, ...existingIds] },
+      },
+      {
+        $addFields: {
+          recommendationScore: {
+            $add: ["$categoryScore", "$scaledTextScore", "$priceScore"],
           },
         },
-        {
-          $sort: {
-            createdAt: -1,
-          },
+      },
+      {
+        $sort: {
+          recommendationScore: -1,
+          createdAt: -1,
         },
-        {
-          $limit: targetLimit - results.length,
-        },
-        ...sellerLookupStage,
-      ];
+      },
+      {
+        $limit: targetLimit,
+      },
+      ...sellerLookupStage,
+    ];
 
-      const additional = await Listing.aggregate(categoryPipeline);
-      results = [...results, ...additional];
-    }
-
+    const results = await Listing.aggregate(pipeline);
     return serializeDocuments(results) as unknown as ListingCardData[];
   } catch (error) {
     console.error("getSimilarListings error:", error);

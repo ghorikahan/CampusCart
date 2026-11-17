@@ -24,6 +24,9 @@ interface BrowsePageProps {
     maxPrice?: string;
     sort?: ListingSortOption;
     page?: string;
+    lat?: string;
+    lng?: string;
+    radius?: string;
   }>;
 }
 
@@ -40,6 +43,9 @@ export default async function BrowsePage({ searchParams }: BrowsePageProps) {
     sort: params.sort,
     page: params.page ? Math.max(1, Number(params.page)) : 1,
     pageSize: 12,
+    lat: params.lat ? Number(params.lat) : undefined,
+    lng: params.lng ? Number(params.lng) : undefined,
+    radiusKm: params.radius ? Number(params.radius) : undefined,
   };
 
   // Unique key for Suspense remounting when search params change

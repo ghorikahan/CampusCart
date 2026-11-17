@@ -31,6 +31,18 @@ export function ActiveFilterChips() {
   const minPrice = searchParams.get("minPrice");
   const maxPrice = searchParams.get("maxPrice");
   const q = searchParams.get("q");
+  const lat = searchParams.get("lat");
+  const lng = searchParams.get("lng");
+  const radius = searchParams.get("radius") || "5";
+
+  const removeLocation = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("lat");
+    params.delete("lng");
+    params.delete("radius");
+    params.delete("page");
+    router.push(params.toString() ? `${pathname}?${params.toString()}` : pathname, { scroll: false });
+  };
 
   const removeParamValue = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -60,13 +72,25 @@ export function ActiveFilterChips() {
     conditions.length > 0 ||
     types.length > 0 ||
     Boolean(minPrice) ||
-    Boolean(maxPrice);
+    Boolean(maxPrice) ||
+    Boolean(lat && lng);
 
   if (!hasFilters) return null;
 
   return (
     <div className="flex flex-wrap items-center gap-2 pt-2">
       <span className="text-xs text-muted-foreground font-medium">Active:</span>
+
+      {lat && lng && (
+        <Badge
+          variant="secondary"
+          className="gap-1.5 pr-1.5 py-1 text-xs rounded-lg cursor-pointer bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20"
+          onClick={removeLocation}
+        >
+          <span>📍 Within {radius} km</span>
+          <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+        </Badge>
+      )}
 
       {categories.map((cat) => (
         <Badge

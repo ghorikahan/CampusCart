@@ -1,3 +1,4 @@
+import { type PipelineStage } from "mongoose";
 import { connectDB } from "@/lib/db";
 import { Listing, type ListingCategory, type ListingCondition, type ListingType } from "@/models/Listing";
 import { serializeDocuments } from "@/lib/serialize";
@@ -20,6 +21,9 @@ export interface SearchListingsParams {
   page?: number;
   pageSize?: number;
   includeReserved?: boolean;
+  lat?: number;
+  lng?: number;
+  radiusKm?: number;
 }
 
 export interface SearchListingsResult {
@@ -69,6 +73,9 @@ export async function searchListings(
     page = 1,
     pageSize = 12,
     includeReserved = true,
+    lat,
+    lng,
+    radiusKm = 5,
   } = params;
 
   const currentPage = Math.max(1, page);
@@ -132,6 +139,105 @@ export async function searchListings(
     if (Object.keys(priceFilter).length > 0) {
       matchQuery.price = priceFilter;
     }
+  }
+
+  const hasGeo =
+    typeof lat === "number" &&
+    typeof lng === "number" &&
+    !isNaN(lat) &&
+    !isNaN(lng);
+
+  // 2. Geospatial Discovery ($geoNear must be the FIRST pipeline stage)
+  if (hasGeo) {
+    const cleanQ = q?.trim();
+    if (cleanQ) {
+      const escaped = escapeRegex(cleanQ);
+      matchQuery.$or = [
+        { title: { $regex: escaped, $options: "i" } },
+        { description: { $regex: escaped, $options: "i" } },
+      ];
+    }
+
+    const radius =
+      radiusKm && [2, 5, 10, 25].includes(Number(radiusKm))
+        ? Number(radiusKm)
+        : Number(radiusKm) > 0
+        ? Number(radiusKm)
+        : 5;
+    const maxDistanceMeters = radius * 1000;
+
+    const geoPipeline: PipelineStage[] = [
+      {
+        $geoNear: {
+          near: {
+            type: "Point",
+            coordinates: [Number(lng), Number(lat)],
+          },
+          distanceField: "distance",
+          maxDistance: maxDistanceMeters,
+          spherical: true,
+          query: matchQuery,
+        },
+      },
+      {
+        $facet: {
+          metadata: [{ $count: "total" }],
+          results: [
+            ...(sort === "price_asc"
+              ? [{ $sort: { price: 1 as const, distance: 1 as const } }]
+              : sort === "price_desc"
+              ? [{ $sort: { price: -1 as const, distance: 1 as const } }]
+              : sort === "newest"
+              ? [{ $sort: { createdAt: -1 as const, distance: 1 as const } }]
+              : [{ $sort: { distance: 1 as const } }]),
+            { $skip: skip },
+            { $limit: limit },
+            {
+              $lookup: {
+                from: "users",
+                localField: "seller",
+                foreignField: "_id",
+                pipeline: [
+                  {
+                    $project: {
+                      name: 1,
+                      email: 1,
+                      image: 1,
+                      university: 1,
+                      course: 1,
+                      city: 1,
+                      phone: 1,
+                      showPhone: 1,
+                    },
+                  },
+                ],
+                as: "seller",
+              },
+            },
+            {
+              $unwind: {
+                path: "$seller",
+                preserveNullAndEmptyArrays: true,
+              },
+            },
+          ],
+        },
+      },
+    ];
+
+    const aggResult = await Listing.aggregate(geoPipeline);
+    const total = aggResult[0]?.metadata[0]?.total ?? 0;
+    const rawListings = aggResult[0]?.results ?? [];
+    const listings = serializeDocuments<ListingCardData>(rawListings);
+    const totalPages = Math.ceil(total / limit) || 1;
+
+    return {
+      listings,
+      total,
+      page: currentPage,
+      pageSize: limit,
+      totalPages,
+    };
   }
 
   // 2. Text Search with Regex Fallback

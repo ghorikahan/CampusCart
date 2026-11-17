@@ -2,7 +2,9 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
-import { SlidersHorizontal, RotateCcw } from "lucide-react";
+import { SlidersHorizontal, RotateCcw, MapPin, Navigation, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
@@ -47,6 +49,12 @@ export function BrowseFilters({ className, onFilterChange }: BrowseFiltersProps)
   const selectedTypes = searchParams.getAll("type");
   const urlMinPrice = searchParams.get("minPrice") ? Number(searchParams.get("minPrice")) : 0;
   const urlMaxPrice = searchParams.get("maxPrice") ? Number(searchParams.get("maxPrice")) : 50000;
+  const urlLat = searchParams.get("lat");
+  const urlLng = searchParams.get("lng");
+  const urlRadius = searchParams.get("radius") || "5";
+  const isNearMe = Boolean(urlLat && urlLng);
+
+  const [isLocating, setIsLocating] = useState(false);
 
   // Local state for smooth slider dragging without cascading effects
   const [localRange, setLocalRange] = useState<[number, number] | null>(null);
@@ -62,6 +70,51 @@ export function BrowseFilters({ className, onFilterChange }: BrowseFiltersProps)
     },
     [pathname, router, onFilterChange]
   );
+
+  // Near Me Geolocation Toggle
+  const handleToggleNearMe = () => {
+    if (isNearMe) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.delete("lat");
+      params.delete("lng");
+      params.delete("radius");
+      updateParams(params);
+      toast.info("Distance filter cleared.");
+      return;
+    }
+
+    if (typeof window === "undefined" || !navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setIsLocating(false);
+        const params = new URLSearchParams(searchParams.toString());
+        params.set("lat", pos.coords.latitude.toFixed(6));
+        params.set("lng", pos.coords.longitude.toFixed(6));
+        if (!params.get("radius")) {
+          params.set("radius", "5");
+        }
+        updateParams(params);
+        toast.success("Showing campus items within 5 km of you!");
+      },
+      (err) => {
+        setIsLocating(false);
+        console.warn("Geolocation error:", err);
+        toast.error("Location access denied or unavailable. Please enable browser permissions.");
+      },
+      { timeout: 10000, enableHighAccuracy: false }
+    );
+  };
+
+  const handleSelectRadius = (r: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("radius", String(r));
+    updateParams(params);
+  };
 
   // Toggle multi-value array param (category, condition, type)
   const handleToggleParam = (paramName: string, value: string) => {
@@ -110,7 +163,8 @@ export function BrowseFilters({ className, onFilterChange }: BrowseFiltersProps)
     selectedConditions.length > 0 ||
     selectedTypes.length > 0 ||
     urlMinPrice > 0 ||
-    urlMaxPrice < 50000;
+    urlMaxPrice < 50000 ||
+    isNearMe;
 
   return (
     <div className={className}>
@@ -132,6 +186,71 @@ export function BrowseFilters({ className, onFilterChange }: BrowseFiltersProps)
       </div>
 
       <div className="py-4 space-y-6">
+        {/* Location / Near Me Filter */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <MapPin className="h-3.5 w-3.5 text-primary" />
+              Location Radius
+            </Label>
+            {isNearMe && (
+              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            )}
+          </div>
+
+          <Button
+            type="button"
+            variant={isNearMe ? "default" : "outline"}
+            size="sm"
+            onClick={handleToggleNearMe}
+            disabled={isLocating}
+            className="w-full rounded-xl text-xs font-semibold justify-center gap-2"
+          >
+            {isLocating ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Detecting location...
+              </>
+            ) : isNearMe ? (
+              <>
+                <Navigation className="h-3.5 w-3.5 fill-current" />
+                Near Me (Active)
+              </>
+            ) : (
+              <>
+                <MapPin className="h-3.5 w-3.5" />
+                Find Near Me
+              </>
+            )}
+          </Button>
+
+          {isNearMe && (
+            <div className="space-y-1.5 pt-1">
+              <span className="text-[10px] text-muted-foreground font-medium">Search Distance:</span>
+              <div className="grid grid-cols-4 gap-1.5">
+                {[2, 5, 10, 25].map((r) => {
+                  const isSelected = Number(urlRadius) === r;
+                  return (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => handleSelectRadius(r)}
+                      className={`text-xs py-1 rounded-lg border font-semibold transition ${
+                        isSelected
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-muted/30 border-border/70 hover:bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {r} km
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <Separator />
         {/* Category Filter */}
         <div className="space-y-3">
           <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">

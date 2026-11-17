@@ -133,10 +133,10 @@ export function MyListingsTab({
           prev.map((item) =>
             selectedIds.includes(item.id)
               ? {
-                  ...item,
-                  status,
-                  soldAt: status === "SOLD" ? new Date().toISOString() : null,
-                }
+                ...item,
+                status,
+                soldAt: status === "SOLD" ? new Date().toISOString() : null,
+              }
               : item
           )
         );
@@ -461,8 +461,8 @@ export function MyListingsTab({
                         {item.price !== null
                           ? `₹${item.price.toLocaleString("en-IN")}`
                           : item.listingType === "FREE"
-                          ? "FREE"
-                          : "EXCHANGE"}
+                            ? "FREE"
+                            : "EXCHANGE"}
                       </TableCell>
 
                       <TableCell>
@@ -633,8 +633,8 @@ export function MyListingsTab({
                         {item.price !== null
                           ? `₹${item.price.toLocaleString("en-IN")}`
                           : item.listingType === "FREE"
-                          ? "FREE"
-                          : "EXCHANGE"}
+                            ? "FREE"
+                            : "EXCHANGE"}
                       </p>
 
                       <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">

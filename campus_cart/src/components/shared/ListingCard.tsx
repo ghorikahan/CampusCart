@@ -3,12 +3,13 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
-import { MapPin, Clock } from "lucide-react";
+import { MapPin, Clock, Navigation } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { PriceTag } from "@/components/shared/PriceTag";
 import { SellerChip } from "@/components/shared/SellerChip";
 import { FavoriteButton } from "@/components/shared/FavoriteButton";
+import { DEFAULT_BLUR_DATA_URL } from "@/lib/images";
 import { cn } from "@/lib/utils";
 
 export type ListingCardData = {
@@ -29,6 +30,7 @@ export type ListingCardData = {
   };
   createdAt: string | Date;
   locationText?: string;
+  distance?: number | null;
 };
 
 interface ListingCardProps {
@@ -85,7 +87,9 @@ export function ListingCard({
               src={primaryImage}
               alt={listing.title}
               fill
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
+              placeholder="blur"
+              blurDataURL={DEFAULT_BLUR_DATA_URL}
               className={cn(
                 "object-cover transition-transform duration-300 group-hover:scale-105",
                 !isAvailable && "grayscale-[40%] opacity-90"
@@ -145,14 +149,27 @@ export function ListingCard({
             </h3>
           </div>
 
-          {/* Location & Time Ago metadata */}
+          {/* Location, Distance & Time Ago metadata */}
           <div className="space-y-2 pt-2 border-t border-border/50">
-            {listing.locationText && (
-              <div className="flex items-center gap-1 text-[11px] text-muted-foreground truncate">
-                <MapPin className="h-3 w-3 shrink-0" />
-                <span className="truncate">{listing.locationText}</span>
-              </div>
-            )}
+            <div className="flex items-center justify-between gap-1.5 text-[11px] text-muted-foreground">
+              {listing.locationText ? (
+                <div className="flex items-center gap-1 truncate">
+                  <MapPin className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{listing.locationText}</span>
+                </div>
+              ) : (
+                <span />
+              )}
+
+              {listing.distance !== undefined && listing.distance !== null && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md shrink-0">
+                  <Navigation className="h-2.5 w-2.5" />
+                  {listing.distance < 1000
+                    ? `${Math.round(listing.distance)} m`
+                    : `${(listing.distance / 1000).toFixed(1)} km`}
+                </span>
+              )}
+            </div>
 
             <div className="flex items-center justify-between gap-2">
               <SellerChip

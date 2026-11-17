@@ -16,7 +16,10 @@ import {
   Layers,
   FileText,
   Camera,
+  X,
 } from "lucide-react";
+
+import { generateDescriptionAction, suggestCategoryAction } from "@/server/ai/actions";
 
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -109,6 +112,16 @@ export function ListingForm({
   const [isLocating, setIsLocating] = useState(false);
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
   const [draftDismissed, setDraftDismissed] = useState(false);
+
+  // AI Generation & Suggestion State
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
+  const [isSuggestingCategory, setIsSuggestingCategory] = useState(false);
+  const [suggestedCategory, setSuggestedCategory] = useState<{
+    category: (typeof listingCategories)[number];
+    confidence: number;
+    reason?: string;
+  } | null>(null);
+  const [isCategoryDismissed, setIsCategoryDismissed] = useState(false);
 
   // Synchronously read draft from localStorage on client with useSyncExternalStore
   const savedDraftRaw = useSyncExternalStore(
@@ -290,17 +303,89 @@ export function ListingForm({
     );
   }, [setValue]);
 
-  // AI Placeholders
-  const handleSuggestCategory = () => {
-    toast.info("✨ AI Category Suggestion will analyze your title & photos once connected!", {
-      description: "Feature marked for upcoming AI milestone.",
-    });
+  // AI Enhancements: Category Suggestion
+  const handleSuggestCategory = async () => {
+    if (!watchedTitle || watchedTitle.trim().length < 2) {
+      toast.warning("Please enter a listing title first to suggest a category.");
+      return;
+    }
+
+    setIsSuggestingCategory(true);
+    try {
+      const res = await suggestCategoryAction({
+        title: watchedTitle,
+        description: watchedDescription,
+      });
+
+      if (res.success && res.category) {
+        setSuggestedCategory({
+          category: res.category,
+          confidence: res.confidence,
+          reason: res.reason,
+        });
+        setIsCategoryDismissed(false);
+        toast.info(
+          `Suggested: ${categoryLabels[res.category]} (${Math.round(res.confidence * 100)}% match)`
+        );
+      } else {
+        toast.error(res.error || "Could not determine category.");
+      }
+    } catch {
+      toast.error("Failed to suggest category.");
+    } finally {
+      setIsSuggestingCategory(false);
+    }
   };
 
-  const handleGenerateDescription = () => {
-    toast.info("✨ AI Description Generator will draft specifications from your title!", {
-      description: "Feature marked for upcoming AI milestone.",
+  const handleApplySuggestedCategory = () => {
+    if (!suggestedCategory) return;
+    setValue("category", suggestedCategory.category, {
+      shouldValidate: true,
+      shouldDirty: true,
     });
+    setIsCategoryDismissed(true);
+    toast.success(`Category updated to ${categoryLabels[suggestedCategory.category]}!`);
+  };
+
+  // AI Enhancements: Friendly 60-120 word Description Generator
+  const handleGenerateDescription = async () => {
+    if (!watchedTitle || watchedTitle.trim().length < 3) {
+      toast.warning("Please enter an item title first before generating a description.");
+      return;
+    }
+
+    setIsGeneratingDescription(true);
+    try {
+      const res = await generateDescriptionAction({
+        title: watchedTitle,
+        category: watchedCategory,
+        condition: watchedCondition,
+        listingType: watchedListingType,
+        keywords: watchedExchangeFor || "",
+      });
+
+      if (res.success && res.description) {
+        setValue("description", res.description, {
+          shouldValidate: true,
+          shouldDirty: true,
+        });
+        if (res.isFallback) {
+          toast.success("Draft description generated! (Template mode - feel free to customize)", {
+            description: "You can edit this description directly in the box below.",
+          });
+        } else {
+          toast.success("✨ AI description generated!", {
+            description: `You have ${res.remaining ?? 9} generations remaining this hour.`,
+          });
+        }
+      } else {
+        toast.error(res.error || "Failed to generate description.");
+      }
+    } catch {
+      toast.error("Something went wrong while generating the description.");
+    } finally {
+      setIsGeneratingDescription(false);
+    }
   };
 
   // Form Submission
@@ -453,10 +538,20 @@ export function ListingForm({
                     <button
                       type="button"
                       onClick={handleSuggestCategory}
-                      className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+                      disabled={isSuggestingCategory}
+                      className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline disabled:opacity-50"
                     >
-                      <Sparkles className="h-3 w-3" />
-                      Suggest category
+                      {isSuggestingCategory ? (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Analyzing...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-3 w-3" />
+                          Suggest category
+                        </>
+                      )}
                     </button>
                   </div>
                   <Controller
@@ -477,6 +572,39 @@ export function ListingForm({
                       </Select>
                     )}
                   />
+
+                  {/* Dismissible AI Category Suggestion Chip */}
+                  {suggestedCategory && !isCategoryDismissed && (
+                    <div className="flex items-center justify-between gap-2 p-2 rounded-xl bg-primary/10 border border-primary/20 text-xs animate-in fade-in duration-200">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <span className="truncate">
+                          Suggested: <strong>{categoryLabels[suggestedCategory.category]}</strong>{" "}
+                          <span className="text-muted-foreground text-[10px]">
+                            ({Math.round(suggestedCategory.confidence * 100)}% match)
+                          </span>
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={handleApplySuggestedCategory}
+                          className="h-6 px-2 text-[10px] rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition shadow-xs"
+                        >
+                          Apply
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsCategoryDismissed(true)}
+                          className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-background/60"
+                          aria-label="Dismiss category suggestion"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {errors.category && (
                     <p className="text-xs text-destructive font-medium">{errors.category.message}</p>
                   )}
@@ -658,10 +786,20 @@ export function ListingForm({
                     <button
                       type="button"
                       onClick={handleGenerateDescription}
-                      className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+                      disabled={isGeneratingDescription}
+                      className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline disabled:opacity-50"
                     >
-                      <Sparkles className="h-3 w-3" />
-                      Generate description with AI
+                      {isGeneratingDescription ? (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          Generating description...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-3 w-3" />
+                          Generate description with AI
+                        </>
+                      )}
                     </button>
                     <span className="text-[11px] text-muted-foreground">
                       {watchedDescription?.length || 0}/2000
