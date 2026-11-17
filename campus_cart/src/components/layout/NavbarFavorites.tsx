@@ -44,4 +44,3 @@ export function NavbarFavorites({ initialCount = 0 }: NavbarFavoritesProps) {
     </Link>
   );
 }
-
