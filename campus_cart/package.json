@@ -17,8 +17,10 @@
     "test:dashboard": "tsx scripts/test-dashboard.ts",
     "test:enhancements": "tsx scripts/test-enhancements.ts",
     "test:performance": "tsx scripts/test-performance-explain.ts",
+    "test:e2e": "playwright test",
     "verify:indexes": "tsx scripts/verify-search-indexes.ts",
     "db:seed": "tsx src/server/seed.ts",
+    "db:seed:test": "tsx scripts/seed-test-db.ts",
     "format": "prettier --write ."
   },
   "dependencies": {
@@ -60,6 +62,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/turbopack": "^4",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",

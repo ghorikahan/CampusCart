@@ -2,6 +2,7 @@ import { z } from "zod";
 
 const envSchema = z.object({
   MONGODB_URI: z.string().min(1, "MONGODB_URI is required").default("mongodb://localhost:27017/campuscart"),
+  MONGODB_URI_TEST: z.string().optional().default("mongodb://localhost:27017/campuscart_test"),
   AUTH_SECRET: z.string().min(1, "AUTH_SECRET is required").default("development_secret_change_in_production"),
   AUTH_GOOGLE_ID: z.string().optional().default(""),
   AUTH_GOOGLE_SECRET: z.string().optional().default(""),

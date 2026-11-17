@@ -24,8 +24,12 @@ if (!global.mongooseCache) {
  * Prevents multiple connections during hot-reloads in development
  * and handles serverless function lifecycles safely.
  */
-export async function connectDB(): Promise<Mongoose> {
-  const uri = env.MONGODB_URI;
+export async function connectDB(customUri?: string): Promise<Mongoose> {
+  const uri =
+    customUri ||
+    (process.env.USE_TEST_DB === "true" || process.env.NODE_ENV === "test"
+      ? (process.env.MONGODB_URI_TEST || env.MONGODB_URI_TEST || env.MONGODB_URI)
+      : env.MONGODB_URI);
 
   if (!uri) {
     throw new Error("MONGODB_URI environment variable is missing.");

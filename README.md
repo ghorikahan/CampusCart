@@ -1,88 +1,44 @@
 # CampusCart 🛒🎓
+> **The modern, safe, student-focused second-hand marketplace for campus communities.**
 
-A student-focused second-hand marketplace web app designed for campus communities to buy, sell, exchange, and donate items safely and conveniently.
+[![Next.js 16](https://img.shields.io/badge/Next.js-16.4-black?logo=next.js)](https://nextjs.org/)
+[![React 19](https://img.shields.io/badge/React-19.3-blue?logo=react)](https://react.dev/)
+[![Tailwind CSS v4](https://img.shields.io/badge/Tailwind-v4-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Atlas_%26_Local-47A248?logo=mongodb)](https://www.mongodb.com/)
+[![Playwright](https://img.shields.io/badge/Playwright-E2E_Tests-45BA4B?logo=playwright)](https://playwright.dev/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+---
+
+## 📖 Overview
+
+**CampusCart** connects students within university ecosystems to buy, sell, exchange, and donate textbooks, dorm furniture, electronics, and study essentials safely. Designed around verified campus communication, geospatial proximity, and structured offers, CampusCart eliminates marketplace spam and makes student trading transparent, reliable, and delightful.
+
+The full Next.js application codebase is located in the [`campus_cart/`](./campus_cart) directory.
+
+---
 
 ## 🛠 Tech Stack
 
-- **Framework**: [Next.js 15+](https://nextjs.org/) (App Router) with React 19
-- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/)
-- **Icons**: [lucide-react](https://lucide.dev/)
-- **Database & ODM**: [MongoDB Atlas](https://www.mongodb.com/atlas) with [Mongoose](https://mongoosejs.com/)
-- **Authentication**: [Auth.js (NextAuth v5)](https://authjs.dev/) with Credentials & Google OAuth (JWT strategy, custom Mongoose User)
-- **Forms & Validation**: [React Hook Form](https://react-hook-form.com/) + [Zod](https://zod.dev/)
-- **Media Optimization**: [Cloudinary](https://cloudinary.com/) + [sharp](https://sharp.pixelplumbing.com/)
-- **Notifications**: [Sonner](https://sonner.emilkowal.ski/)
-- **Theming**: [next-themes](https://github.com/pacocoursey/next-themes)
+- **Frontend & App Framework:** Next.js 16 (App Router), React 19, TypeScript
+- **Styling & UI Chrome:** Tailwind CSS v4, Radix UI Primitives, Lucide Icons, Sonner Toasts
+- **Database & ODM:** MongoDB 8.x, Mongoose 9.x (Compound, Text, TTL, 2dsphere indexes)
+- **Authentication:** Auth.js (NextAuth.js v5 beta), Bcrypt.js
+- **Media Optimization:** Sharp, Cloudinary SDK, HTML5 Canvas client-side compressor
+- **Artificial Intelligence:** Google Gemini API (`@google/genai`)
+- **Data Visualization & Tools:** Recharts, QRCode, Framer Motion (v14)
+- **Testing & Verification:** Playwright (End-to-End browser tests), TSX (Regression test suites)
 
 ---
 
-## 📁 Directory Structure
+## 🚀 Quick Start
 
-```text
-src/
-├── app/                  # Next.js App Router pages, layouts, and API routes
-├── components/
-│   ├── ui/               # shadcn/ui primitives
-│   ├── layout/           # Shared layouts (Navbar, Footer, Sidebar)
-│   └── shared/           # Reusable compound UI components
-├── features/             # Feature-based business domain modules
-│   ├── auth/             # Login, register, auth session
-│   ├── dashboard/        # User marketplace analytics & management
-│   ├── enquiries/        # Structured enquiries and counter-offers
-│   ├── favorites/        # Saved items / wishlist
-│   ├── listings/         # Listing catalog, create, edit, search, filter
-│   ├── notifications/    # In-app event alerts
-│   └── sellers/          # Public profiles and seller stats
-├── lib/
-│   ├── db.ts             # Cached Mongoose connection singleton
-│   ├── env.ts            # Type-safe Zod-validated environment config
-│   ├── serialize.ts      # Mongo doc serialization helpers (lean -> client safe)
-│   └── utils.ts          # Tailwind cn utility
-├── models/               # Mongoose schemas and TypeScript interfaces
-├── server/               # Server Actions, mutations, seed scripts
-└── types/                # Shared TypeScript definitions
-```
-
----
-
-## 🚀 Getting Started
-
-### 1. Prerequisites
-- Node.js >= 20.x
-- npm >= 10.x
-- MongoDB connection URI (local instance or MongoDB Atlas cluster)
-
-### 2. Install Dependencies
 ```bash
+cd campus_cart
 npm install
-```
-
-### 3. Setup Environment Variables
-Copy the example environment configuration:
-```bash
-cp .env.example .env.local
-```
-Fill in the values in `.env.local`:
-- `MONGODB_URI`: Your MongoDB connection string
-- `AUTH_SECRET`: Secret used by Auth.js to sign JWTs (generate with `npx auth secret`)
-- `AUTH_GOOGLE_ID` & `AUTH_GOOGLE_SECRET`: Google OAuth credentials
-- `CLOUDINARY_*`: Cloudinary cloud name, API key, and secret for image uploads
-- `GEMINI_API_KEY`: API key for AI-assisted descriptions and categories
-
-### 4. Run Development Server
-```bash
+npm run db:seed
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
 
----
-
-## 📜 Available Scripts
-
-- `npm run dev`: Starts Next.js development server
-- `npm run build`: Builds the production bundle
-- `npm run start`: Starts production server
-- `npm run lint`: Runs ESLint checks
-- `npm run typecheck`: Runs TypeScript compiler check (`tsc --noEmit`)
-- `npm run db:seed`: Seeds MongoDB with initial mock/test data via `tsx`
-- `npm run format`: Formats codebase with Prettier
+For the comprehensive guide, system architecture diagrams, Atlas setup, environment variables table, and Vercel deployment notes, please refer to:
+👉 **[campus_cart/README.md](./campus_cart/README.md)**
