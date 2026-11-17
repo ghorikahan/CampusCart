@@ -44,7 +44,7 @@ export interface SearchSuggestion {
 }
 
 const PUBLIC_SELLER_FIELDS =
-  "name email image university course city phone showPhone";
+  "name image university course city phone showPhone";
 
 /**
  * Escapes characters with special meaning in regex to prevent regex injection.
@@ -201,7 +201,6 @@ export async function searchListings(
                   {
                     $project: {
                       name: 1,
-                      email: 1,
                       image: 1,
                       university: 1,
                       course: 1,

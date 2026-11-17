@@ -39,9 +39,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import dynamic from "next/dynamic";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { FavoriteButton } from "@/components/shared/FavoriteButton";
-import { ShareListingDialog } from "./ShareListingDialog";
+
+const ShareListingDialog = dynamic(
+  () => import("./ShareListingDialog").then((mod) => ({ default: mod.ShareListingDialog })),
+  { ssr: false }
+);
 import {
   updateListingStatus,
   toggleListingActive,

@@ -9,6 +9,7 @@ import { Enquiry } from "@/models/Enquiry";
 import { createManyNotifications } from "@/server/notifications";
 import { deleteFromCloudinary } from "@/lib/cloudinary";
 import { isValidObjectId, serializeDocument } from "@/lib/serialize";
+import { assertNoSqlSafe, sanitizeText } from "@/lib/security";
 import {
   createListingSchema,
   updateListingSchema,
@@ -30,6 +31,8 @@ export async function createListing(input: CreateListingInput): Promise<ActionRe
       return { success: false, error: "You must be signed in to create a listing." };
     }
 
+    assertNoSqlSafe(input, "Listing input");
+
     const validation = createListingSchema.safeParse(input);
     if (!validation.success) {
       const flattened = validation.error.flatten();
@@ -43,8 +46,16 @@ export async function createListing(input: CreateListingInput): Promise<ActionRe
     await connectDB();
 
     const data = validation.data;
-    const listing = await Listing.create({
+    const sanitizedData = {
       ...data,
+      title: sanitizeText(data.title),
+      description: sanitizeText(data.description),
+      exchangeFor: data.exchangeFor ? sanitizeText(data.exchangeFor) : undefined,
+      locationText: data.locationText ? sanitizeText(data.locationText) : undefined,
+    };
+
+    const listing = await Listing.create({
+      ...sanitizedData,
       seller: user.id,
       status: "AVAILABLE",
       isActive: true,
@@ -163,15 +174,15 @@ export async function updateListing(
       );
     }
 
-    // Apply updates
-    listing.title = data.title;
-    listing.description = data.description;
+    // Apply sanitized updates
+    listing.title = sanitizeText(data.title);
+    listing.description = sanitizeText(data.description);
     listing.category = data.category;
     listing.condition = data.condition;
     listing.listingType = data.listingType;
     listing.price = data.price;
-    listing.exchangeFor = data.exchangeFor ?? undefined;
-    listing.locationText = data.locationText ?? undefined;
+    listing.exchangeFor = data.exchangeFor ? sanitizeText(data.exchangeFor) : undefined;
+    listing.locationText = data.locationText ? sanitizeText(data.locationText) : undefined;
     listing.location = data.location;
     listing.images = data.images;
 

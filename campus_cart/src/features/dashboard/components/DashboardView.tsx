@@ -2,10 +2,24 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import { PlusCircle, Package, MessageSquare, Send, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { OverviewCards } from "./OverviewCards";
-import { ActivityChart } from "./ActivityChart";
+import { FadeIn } from "@/components/shared/Motion";
+
+const ActivityChart = dynamic(
+  () => import("./ActivityChart").then((mod) => ({ default: mod.ActivityChart })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-80 w-full animate-pulse rounded-2xl bg-card border border-border/70 p-6 flex flex-col justify-between">
+        <div className="h-6 w-32 bg-muted rounded" />
+        <div className="h-44 w-full bg-muted/50 rounded" />
+      </div>
+    ),
+  }
+);
 import { NeedsAttentionPanel } from "./NeedsAttentionPanel";
 import { OnboardingChecklist } from "./OnboardingChecklist";
 import { MyListingsTab } from "./MyListingsTab";
@@ -56,7 +70,9 @@ export function DashboardView({
       </div>
 
       {/* 1. Overview Metric Cards (Active, Reserved, Sold, Views, Pending Offers, Unread Notifications) */}
-      <OverviewCards stats={data.stats} />
+      <FadeIn>
+        <OverviewCards stats={data.stats} />
+      </FadeIn>
 
       {/* 2. Middle Row: 30-Day Activity Chart + Needs Attention Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -2,6 +2,7 @@ import { searchListings, type SearchListingsParams } from "@/server/listings/sea
 import { getUserFavoriteListingIds } from "@/server/favorites/queries";
 import { ListingCard } from "@/components/shared/ListingCard";
 import { EmptyState } from "@/components/shared/EmptyState";
+import { FadeInStagger, FadeInStaggerItem } from "@/components/shared/Motion";
 import { ActiveFilterChips } from "./ActiveFilterChips";
 import { BrowseSortSelect } from "./BrowseSortSelect";
 import { MobileFilterDrawer } from "./MobileFilterDrawer";
@@ -47,15 +48,16 @@ export async function BrowseResults({ searchParams }: BrowseResultsProps) {
       {/* Grid or Empty State */}
       {listings.length > 0 ? (
         <div className="space-y-8">
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+          <FadeInStagger className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {listings.map((item) => (
-              <ListingCard
-                key={item.id}
-                listing={item}
-                isFavorite={favoriteSet.has(item.id)}
-              />
+              <FadeInStaggerItem key={item.id}>
+                <ListingCard
+                  listing={item}
+                  isFavorite={favoriteSet.has(item.id)}
+                />
+              </FadeInStaggerItem>
             ))}
-          </div>
+          </FadeInStagger>
 
           <BrowsePagination currentPage={page} totalPages={totalPages} />
         </div>

@@ -7,6 +7,8 @@ import { User, type IUser } from "@/models/User";
 import { registerSchema, updateProfileSchema, type RegisterInput, type UpdateProfileInput } from "./schemas";
 import { requireUser } from "@/server/auth";
 import { serializeDocument } from "@/lib/serialize";
+import { checkAuthRateLimit } from "@/server/security/rateLimiter";
+import { sanitizeText } from "@/lib/security";
 
 export interface ActionResponse<T = unknown> {
   success: boolean;
@@ -32,6 +34,15 @@ export async function registerUser(input: RegisterInput): Promise<ActionResponse
 
     const { name, email, password } = parsed.data;
 
+    // Rate limit: max 5 registration attempts per 15 minutes per email
+    const rateLimit = await checkAuthRateLimit(email);
+    if (!rateLimit.allowed) {
+      return {
+        success: false,
+        error: rateLimit.error || "Too many registration attempts. Please wait 15 minutes before trying again.",
+      };
+    }
+
     await connectDB();
 
     // Check if user already exists
@@ -47,10 +58,10 @@ export async function registerUser(input: RegisterInput): Promise<ActionResponse
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // Create student user
+    // Create student user with sanitized text
     await User.create({
-      name,
-      email,
+      name: sanitizeText(name),
+      email: email.toLowerCase().trim(),
       passwordHash,
       authProvider: "CREDENTIALS",
       contactPreference: "IN_APP",
@@ -92,13 +103,13 @@ export async function updateProfile(input: UpdateProfileInput): Promise<ActionRe
       user.id,
       {
         $set: {
-          name: parsed.data.name,
-          bio: parsed.data.bio,
-          university: parsed.data.university,
-          course: parsed.data.course,
-          city: parsed.data.city,
+          name: sanitizeText(parsed.data.name),
+          bio: parsed.data.bio ? sanitizeText(parsed.data.bio) : undefined,
+          university: parsed.data.university ? sanitizeText(parsed.data.university) : undefined,
+          course: parsed.data.course ? sanitizeText(parsed.data.course) : undefined,
+          city: parsed.data.city ? sanitizeText(parsed.data.city) : undefined,
           image: parsed.data.image || undefined,
-          phone: parsed.data.phone,
+          phone: parsed.data.phone ? sanitizeText(parsed.data.phone) : undefined,
           showPhone: parsed.data.showPhone,
           contactPreference: parsed.data.contactPreference,
         },

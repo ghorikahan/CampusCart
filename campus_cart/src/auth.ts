@@ -6,6 +6,7 @@ import { authConfig } from "@/auth.config";
 import { connectDB } from "@/lib/db";
 import { User } from "@/models/User";
 import { loginSchema } from "@/features/auth/schemas";
+import { checkAuthRateLimit } from "@/server/security/rateLimiter";
 import { env } from "@/lib/env";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -34,6 +35,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         }
 
         const { email, password } = parsed.data;
+
+        // Rate limit: max 5 login attempts per 15 minutes per email
+        const rateLimit = await checkAuthRateLimit(email);
+        if (!rateLimit.allowed) {
+          throw new Error("Too many login attempts. Please wait 15 minutes before trying again.");
+        }
 
         await connectDB();
         const user = await User.findOne({ email }).lean();

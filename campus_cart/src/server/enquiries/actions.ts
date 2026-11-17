@@ -8,6 +8,8 @@ import { Listing } from "@/models/Listing";
 import { Enquiry } from "@/models/Enquiry";
 import { createNotification, createManyNotifications } from "@/server/notifications";
 import { serializeDocument } from "@/lib/serialize";
+import { checkEnquiryRateLimit } from "@/server/security/rateLimiter";
+import { sanitizeText } from "@/lib/security";
 import {
   createEnquirySchema,
   respondEnquirySchema,
@@ -39,6 +41,12 @@ export async function createEnquiry(
       return { success: false, error: "Please sign in to send an enquiry or make an offer." };
     }
 
+    // Enforce rate limiting: max 15 enquiries per hour per user
+    const rateLimit = await checkEnquiryRateLimit(user.id);
+    if (!rateLimit.allowed) {
+      return { success: false, error: rateLimit.error || "Too many enquiries sent. Please try again later." };
+    }
+
     const validation = createEnquirySchema.safeParse(input);
     if (!validation.success) {
       return {
@@ -50,6 +58,7 @@ export async function createEnquiry(
 
     await connectDB();
     const { listingId, message, offerPrice } = validation.data;
+    const sanitizedMessage = sanitizeText(message);
 
     const listing = await Listing.findById(listingId);
     if (!listing) {
@@ -80,7 +89,7 @@ export async function createEnquiry(
       listing: listing._id,
       buyer: user.id,
       seller: listing.seller,
-      message,
+      message: sanitizedMessage,
       offerPrice: normalizedOfferPrice,
       status: "PENDING",
       statusHistory: [

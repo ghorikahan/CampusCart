@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import sharp from "sharp";
 import { auth } from "@/auth";
 import { uploadToCloudinary } from "@/lib/cloudinary";
+import { checkUploadRateLimit } from "@/server/security/rateLimiter";
 
 const ALLOWED_MIME_TYPES = new Set([
   "image/jpeg",
@@ -21,6 +22,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { success: false, error: "Unauthorized. Please log in to upload images." },
         { status: 401 }
+      );
+    }
+
+    // 1b. Enforce upload rate limiting (max 20 per hour)
+    const rateLimit = await checkUploadRateLimit(session.user.id);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { success: false, error: rateLimit.error },
+        { status: 429 }
       );
     }
 

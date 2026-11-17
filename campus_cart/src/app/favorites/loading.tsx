@@ -1,41 +1,38 @@
-import { Skeleton } from "@/components/ui/skeleton";
-import { ListingCardSkeleton } from "@/components/shared/ListingCardSkeleton";
-
 export default function FavoritesLoading() {
   return (
-    <div className="min-h-screen bg-background pb-16">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
-        {/* Breadcrumb Skeleton */}
-        <div className="flex items-center gap-2 mb-6">
-          <Skeleton className="h-4 w-12 rounded" />
-          <Skeleton className="h-4 w-4 rounded" />
-          <Skeleton className="h-4 w-24 rounded" />
-        </div>
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-pulse">
+      {/* Header skeleton */}
+      <div className="space-y-2">
+        <div className="h-8 w-48 bg-muted rounded-lg" />
+        <div className="h-4 w-72 bg-muted/60 rounded" />
+      </div>
 
-        {/* Page Header Skeleton */}
-        <div className="space-y-2 mb-8">
-          <Skeleton className="h-9 w-48 rounded-xl" />
-          <Skeleton className="h-5 w-80 max-w-full rounded-lg" />
-        </div>
+      {/* Tabs / Filter skeleton */}
+      <div className="flex gap-2">
+        <div className="h-9 w-24 bg-muted rounded-xl" />
+        <div className="h-9 w-28 bg-muted rounded-xl" />
+        <div className="h-9 w-32 bg-muted rounded-xl" />
+      </div>
 
-        {/* Filter Pills Skeleton */}
-        <div className="flex items-center justify-between border-b border-border/60 pb-4 mb-6">
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-10 w-20 rounded-xl" />
-            <Skeleton className="h-10 w-28 rounded-xl" />
-            <Skeleton className="h-10 w-44 rounded-xl" />
+      {/* Cards Grid skeleton */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div
+            key={i}
+            className="flex flex-col rounded-2xl border border-border/60 bg-muted/30 overflow-hidden"
+          >
+            <div className="aspect-[4/3] bg-muted/60" />
+            <div className="p-4 space-y-2.5">
+              <div className="flex justify-between">
+                <div className="h-4 w-16 bg-muted rounded" />
+                <div className="h-4 w-12 bg-muted rounded" />
+              </div>
+              <div className="h-5 w-4/5 bg-muted rounded" />
+              <div className="h-4 w-2/3 bg-muted/60 rounded" />
+            </div>
           </div>
-          <Skeleton className="h-9 w-40 rounded-xl" />
-        </div>
-
-        {/* Cards Grid Skeleton */}
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-            <ListingCardSkeleton key={i} />
-          ))}
-        </div>
+        ))}
       </div>
     </div>
   );
 }
-

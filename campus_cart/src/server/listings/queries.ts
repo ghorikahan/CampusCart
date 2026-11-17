@@ -7,7 +7,7 @@ import { isValidObjectId, serializeDocument, serializeDocuments } from "@/lib/se
 import { type ListingCardData } from "@/components/shared/ListingCard";
 
 const PUBLIC_SELLER_FIELDS =
-  "name email image bio university course city phone showPhone contactPreference createdAt";
+  "name image bio university course city phone showPhone contactPreference createdAt";
 
 /**
  * Retrieves a single listing by its MongoDB ID.
@@ -29,7 +29,19 @@ export async function getListingById(id: string) {
       return null;
     }
 
-    return serializeDocument(listing);
+    const serialized = serializeDocument(listing);
+    if (serialized && typeof serialized === "object" && "seller" in serialized) {
+      const seller = (serialized as Record<string, unknown>).seller as Record<string, unknown> | null;
+      if (seller && typeof seller === "object") {
+        if (!seller.showPhone) {
+          seller.phone = null;
+        }
+        delete seller.passwordHash;
+        delete seller.email;
+      }
+    }
+
+    return serialized;
   } catch (error) {
     console.error("getListingById query error:", error);
     return null;
